@@ -25,7 +25,7 @@ function LoginForm() {
     });
     setLoading(false);
     if (res.ok) {
-      router.push(params.get("from") ?? "/guardian/membros");
+      window.location.href = params.get("from") ?? "/guardian/membros";
     } else {
       setError("Senha incorreta. Tente novamente.");
     }
