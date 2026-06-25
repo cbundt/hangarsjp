@@ -157,7 +157,6 @@ export const LEVEL_NAMES: Record<number, string> = {
   2: "Tripulação de cabine",
   3: "Copiloto",
   4: "Comandante",
-  5: "Torre de Controle",
 };
 
 export const LEVEL_POINTS: Record<number, number> = {
@@ -166,7 +165,6 @@ export const LEVEL_POINTS: Record<number, number> = {
   2: 50,
   3: 120,
   4: Infinity,
-  5: Infinity,
 };
 
 export const CATEGORY_LABELS: Record<MemberCategory, string> = {

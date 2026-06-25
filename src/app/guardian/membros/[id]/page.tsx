@@ -22,7 +22,7 @@ import {
 import Link from "next/link";
 import { fetchAddressByCep } from "@/lib/viacep";
 
-const LEVEL_OPTIONS = [0,1,2,3,4,5].map((l) => ({ value: String(l), label: `${l} — ${LEVEL_NAMES[l]}` }));
+const LEVEL_OPTIONS = [0,1,2,3,4].map((l) => ({ value: String(l), label: `${l} — ${LEVEL_NAMES[l]}` }));
 const ROLE_OPTIONS = [
   { value: "", label: "Nenhum" },
   { value: "torre_controle", label: "Torre de Controle" },

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { LEVEL_NAMES } from "@/types";
 
 const Schema = z.object({
-  to_level: z.number().int().min(0).max(5),
+  to_level: z.number().int().min(0).max(4),
   reason: z.string().min(3),
   witnessed_by: z.string().uuid().optional(),
 });
