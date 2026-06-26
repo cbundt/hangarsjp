@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import nodemailer from "nodemailer";
 
 const Schema = z.object({
   subject: z.string().min(3),
@@ -54,6 +55,16 @@ function buildEmailHtml(subject: string, body: string) {
 </body></html>`;
 }
 
+function createTransport() {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+  if (!user || !pass) return null;
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+  });
+}
+
 export async function GET() {
   const supabase = await createServiceClient();
   const { data, error } = await supabase
@@ -78,34 +89,36 @@ export async function POST(req: NextRequest) {
   if (filters.levels?.length) query = query.in("level", filters.levels);
   if (filters.roles?.length) query = query.in("role_special", filters.roles);
   if (filters.statuses?.length) query = query.in("status", filters.statuses);
-  else query = query.neq("status", "excluido"); // por padrão exclui excluídos
+  else query = query.neq("status", "excluido");
 
   const { data: members, error: mErr } = await query;
   if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 });
   if (!members?.length) return NextResponse.json({ error: "Nenhum destinatário encontrado." }, { status: 400 });
 
   const html = buildEmailHtml(subject, msgBody);
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM ?? "HangarSJP <onboarding@resend.dev>";
-  const replyTo = "hangarsjp@gmail.com";
+  const transport = createTransport();
+  const gmailUser = process.env.GMAIL_USER ?? "hangarsjp@gmail.com";
 
   let sentCount = 0;
   const errors: string[] = [];
 
-  if (apiKey) {
+  if (transport) {
     for (const m of members) {
       try {
-        const r = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ from, to: m.email, reply_to: replyTo, subject, html }),
+        await transport.sendMail({
+          from: `HangarSJP <${gmailUser}>`,
+          to: m.email,
+          replyTo: gmailUser,
+          subject,
+          html,
         });
-        if (r.ok) sentCount++;
-        else errors.push(`${m.email}: ${(await r.json()).message}`);
-      } catch { errors.push(m.email); }
+        sentCount++;
+      } catch (e) {
+        errors.push(`${m.email}: ${e instanceof Error ? e.message : "erro"}`);
+      }
     }
   } else {
-    // Sem API key: simula envio (modo desenvolvimento)
+    // Sem credenciais: simula envio (modo desenvolvimento)
     sentCount = members.length;
   }
 
