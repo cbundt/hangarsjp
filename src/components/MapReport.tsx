@@ -20,12 +20,28 @@ interface GeoPoint {
 async function geocodeCep(cep: string): Promise<{ lat: number; lng: number } | null> {
   const clean = cep.replace(/\D/g, "");
   try {
-    const res = await fetch(
+    // 1) Tenta direto pelo CEP no Nominatim
+    const r1 = await fetch(
       `https://nominatim.openstreetmap.org/search?postalcode=${clean}&country=BR&format=json&limit=1`,
       { headers: { "Accept-Language": "pt-BR" } }
     );
-    const data = await res.json();
-    if (data?.[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    const d1 = await r1.json();
+    if (d1?.[0]) return { lat: parseFloat(d1[0].lat), lng: parseFloat(d1[0].lon) };
+
+    // 2) Fallback: busca endereço no ViaCEP e geocodifica pelo bairro+cidade
+    await new Promise((r) => setTimeout(r, 200));
+    const r2 = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+    const addr = await r2.json();
+    if (addr?.erro) return null;
+    const query = [addr.logradouro, addr.bairro, addr.localidade, addr.uf, "Brasil"]
+      .filter(Boolean).join(", ");
+    await new Promise((r) => setTimeout(r, 300));
+    const r3 = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+      { headers: { "Accept-Language": "pt-BR" } }
+    );
+    const d3 = await r3.json();
+    if (d3?.[0]) return { lat: parseFloat(d3[0].lat), lng: parseFloat(d3[0].lon) };
   } catch { /* ignore */ }
   return null;
 }
