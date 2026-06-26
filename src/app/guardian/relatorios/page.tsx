@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, FileText, Map, BarChart2, Users, Printer, LogOut } from "lucide-react";
+import { ArrowLeft, FileText, Map as MapIcon, BarChart2, Users, Printer, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   LEVEL_NAMES, CATEGORY_LABELS, HANGAR_LOGO_SVG,
@@ -245,7 +245,7 @@ export default function RelatoriosPage() {
       color: "text-purple-600",
     },
     {
-      icon: Map,
+      icon: MapIcon,
       title: "Mapa de CEPs",
       desc: "Mapa interativo de São José dos Pinhais com a localização de cada participante por CEP. CEPs com mais de um participante mostram a quantidade.",
       action: () => {
@@ -318,7 +318,7 @@ export default function RelatoriosPage() {
               <div ref={mapRef} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-                    <Map size={18} className="text-green-600" /> Mapa de CEPs — São José dos Pinhais
+                    <MapIcon size={18} className="text-green-600" /> Mapa de CEPs — São José dos Pinhais
                   </h2>
                   <button
                     onClick={() => window.print()}

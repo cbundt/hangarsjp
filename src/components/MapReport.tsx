@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import "leaflet/dist/leaflet.css";
 
 interface MapMember {
   id: string;
@@ -39,7 +40,6 @@ export default function MapReport({ members }: { members: MapMember[] }) {
 
     (async () => {
       const L = (await import("leaflet")).default;
-      await import("leaflet/dist/leaflet.css");
 
       // Fix default marker icons
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
