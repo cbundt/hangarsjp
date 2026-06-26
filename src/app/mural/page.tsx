@@ -7,7 +7,8 @@ import { ArrowLeft, Handshake, Search, TrendingUp } from "lucide-react";
 
 interface Opportunity {
   id: string; title: string; description: string; type: string;
-  contact: string | null; created_at: string;
+  contact: string | null; created_at: string; expires_at: string | null;
+  expired: boolean;
   member: { name: string; organization: string } | null;
 }
 
@@ -66,13 +67,15 @@ export default function MuralPage() {
             {filtered.map((op) => {
               const t = TYPE_LABELS[op.type] ?? { label: op.type, color: "text-gray-400 border-gray-700" };
               const Icon = op.type === "demanda" ? Search : op.type === "parceria" ? Handshake : TrendingUp;
+              const isExpired = op.expired;
               return (
-                <div key={op.id} className={`rounded-xl border p-4 ${t.color}`}>
+                <div key={op.id} className={`rounded-xl border p-4 transition ${isExpired ? "opacity-40 grayscale" : t.color}`}>
                   <div className="flex items-start gap-3">
                     <Icon size={16} className="mt-0.5 shrink-0 opacity-70" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className={`text-xs font-semibold uppercase tracking-wider`}>{t.label}</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider">{t.label}</span>
+                        {isExpired && <span className="text-xs text-gray-500 italic">· prazo encerrado</span>}
                         <span className="text-gray-600 text-xs">·</span>
                         <span className="text-gray-400 text-xs">{op.member?.name} · {op.member?.organization}</span>
                       </div>
@@ -81,9 +84,16 @@ export default function MuralPage() {
                       {op.contact && (
                         <p className="text-gray-500 text-xs mt-2">Contato: <span className="text-gray-400">{op.contact}</span></p>
                       )}
-                      <p className="text-gray-700 text-xs mt-2">
-                        {new Date(op.created_at).toLocaleDateString("pt-BR")}
-                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <p className="text-gray-700 text-xs">
+                          Publicado em {new Date(op.created_at).toLocaleDateString("pt-BR")}
+                        </p>
+                        {op.expires_at && (
+                          <p className={`text-xs ${isExpired ? "text-gray-600" : "text-gray-500"}`}>
+                            · Válido até {new Date(op.expires_at + "T12:00:00").toLocaleDateString("pt-BR")}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

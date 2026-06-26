@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, FileText, Map as MapIcon, BarChart2, Users, Printer, LogOut, Download } from "lucide-react";
+import { ArrowLeft, FileText, Map as MapIcon, BarChart2, Users, Printer, LogOut, Download, Handshake } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   LEVEL_NAMES, CATEGORY_LABELS, HANGAR_LOGO_SVG,
@@ -232,11 +232,42 @@ function exportCSV(members: Member[]) {
   a.click(); URL.revokeObjectURL(url);
 }
 
+interface Opportunity {
+  id: string; title: string; description: string; type: string;
+  contact: string | null; created_at: string; expires_at: string | null;
+  expired: boolean; member: { name: string; organization: string } | null;
+}
+
+const OPP_TYPE: Record<string, string> = { oferta: "Oferta", demanda: "Demanda", parceria: "Parceria" };
+
+function printOportunidades(opportunities: Opportunity[]) {
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = opportunities.map((o) => {
+    const expired = !!o.expires_at && o.expires_at < today;
+    return `<tr style="${expired ? "color:#aaa" : ""}">
+      <td>${OPP_TYPE[o.type] ?? o.type}</td>
+      <td><b>${o.title}</b><br/><span style="font-size:7.5pt">${o.description}</span></td>
+      <td>${o.member?.name ?? "—"}<br/><span style="font-size:7.5pt;color:#888">${o.member?.organization ?? ""}</span></td>
+      <td>${o.contact ?? "—"}</td>
+      <td>${new Date(o.created_at).toLocaleDateString("pt-BR")}</td>
+      <td>${o.expires_at ? new Date(o.expires_at + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</td>
+      <td>${expired ? "Encerrada" : "Ativa"}</td>
+    </tr>`;
+  }).join("");
+  const body = `<table>
+    <thead><tr><th>Tipo</th><th>Título / Descrição</th><th>Membro</th><th>Contato</th><th>Publicado</th><th>Validade</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  printWindow("Mural de Oportunidades", body);
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function RelatoriosPage() {
   const [members, setMembers] = useState<Member[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
+  const [showOpportunities, setShowOpportunities] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -246,9 +277,14 @@ export default function RelatoriosPage() {
   };
 
   useEffect(() => {
-    fetch("/api/reports")
-      .then((r) => r.json())
-      .then((d) => { setMembers(Array.isArray(d) ? d : []); setLoading(false); });
+    Promise.all([
+      fetch("/api/reports").then((r) => r.json()),
+      fetch("/api/opportunities?all=1").then((r) => r.json()),
+    ]).then(([members, opps]) => {
+      setMembers(Array.isArray(members) ? members : []);
+      setOpportunities(Array.isArray(opps) ? opps : []);
+      setLoading(false);
+    });
   }, []);
 
   const cards = [
@@ -298,6 +334,16 @@ export default function RelatoriosPage() {
       action: () => printPorNivel(members),
       color: "text-indigo-600",
     },
+    {
+      icon: Handshake,
+      title: "Mural de Oportunidades",
+      desc: "Todas as oportunidades publicadas pelos membros: ofertas, demandas e parcerias — com status de validade.",
+      action: () => {
+        setShowOpportunities(true);
+        setTimeout(() => document.getElementById("opp-panel")?.scrollIntoView({ behavior: "smooth" }), 100);
+      },
+      color: "text-amber-600",
+    },
   ];
 
   return (
@@ -342,6 +388,66 @@ export default function RelatoriosPage() {
                 </div>
               ))}
             </div>
+
+            {/* Oportunidades inline */}
+            {showOpportunities && (
+              <div id="opp-panel" className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <Handshake size={18} className="text-amber-600" /> Mural de Oportunidades
+                    <span className="text-xs font-normal text-gray-400 ml-1">({opportunities.length} publicações)</span>
+                  </h2>
+                  <button
+                    onClick={() => printOportunidades(opportunities)}
+                    className="inline-flex items-center gap-1 text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50"
+                  >
+                    <Printer size={13} /> Imprimir
+                  </button>
+                </div>
+                {opportunities.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-6 text-center">Nenhuma oportunidade publicada ainda.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-gray-500">
+                          <th className="pb-2 pr-3 font-medium">Tipo</th>
+                          <th className="pb-2 pr-3 font-medium">Título</th>
+                          <th className="pb-2 pr-3 font-medium">Membro</th>
+                          <th className="pb-2 pr-3 font-medium">Publicado</th>
+                          <th className="pb-2 pr-3 font-medium">Validade</th>
+                          <th className="pb-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {opportunities.map((o) => (
+                          <tr key={o.id} className={`border-b border-gray-50 ${o.expired ? "opacity-40" : ""}`}>
+                            <td className="py-2 pr-3 capitalize">{OPP_TYPE[o.type] ?? o.type}</td>
+                            <td className="py-2 pr-3 max-w-[200px]">
+                              <p className="font-medium text-gray-800 truncate">{o.title}</p>
+                              <p className="text-gray-400 truncate">{o.description}</p>
+                            </td>
+                            <td className="py-2 pr-3">
+                              <p className="text-gray-700">{o.member?.name ?? "—"}</p>
+                              <p className="text-gray-400">{o.member?.organization}</p>
+                            </td>
+                            <td className="py-2 pr-3 text-gray-500">{new Date(o.created_at).toLocaleDateString("pt-BR")}</td>
+                            <td className="py-2 pr-3 text-gray-500">
+                              {o.expires_at ? new Date(o.expires_at + "T12:00:00").toLocaleDateString("pt-BR") : "—"}
+                            </td>
+                            <td className="py-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs ${o.expired ? "bg-gray-100 text-gray-400" : "bg-green-100 text-green-700"}`}>
+                                {o.expired ? "Encerrada" : "Ativa"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Mapa inline */}
             {showMap && (

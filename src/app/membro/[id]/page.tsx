@@ -55,7 +55,7 @@ export default function MembroPage() {
   const [msgSent, setMsgSent] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [oppOpen, setOppOpen] = useState(false);
-  const [oppForm, setOppForm] = useState({ title: "", description: "", type: "oferta", contact: "" });
+  const [oppForm, setOppForm] = useState({ title: "", description: "", type: "oferta", contact: "", expires_at: "" });
   const [oppSaving, setOppSaving] = useState(false);
   const [oppSaved, setOppSaved] = useState(false);
 
@@ -674,11 +674,18 @@ export default function MembroPage() {
                   rows={3} className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-orange/30 resize-none"
                   placeholder="Descreva detalhes..." />
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-600 block mb-1">Contato (opcional)</label>
-                <input value={oppForm.contact} onChange={(e) => setOppForm({ ...oppForm, contact: e.target.value })}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-orange/30"
-                  placeholder="WhatsApp, e-mail, etc." />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-600 block mb-1">Contato (opcional)</label>
+                  <input value={oppForm.contact} onChange={(e) => setOppForm({ ...oppForm, contact: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-orange/30"
+                    placeholder="WhatsApp, e-mail, etc." />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 block mb-1">Válido até (opcional)</label>
+                  <input type="date" value={oppForm.expires_at} onChange={(e) => setOppForm({ ...oppForm, expires_at: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-orange/30" />
+                </div>
               </div>
               <div className="flex gap-2">
                 <button onClick={async () => {
@@ -690,7 +697,7 @@ export default function MembroPage() {
                     body: JSON.stringify({ ...oppForm, member_id: id }),
                   });
                   setOppSaving(false);
-                  if (res.ok) { setOppSaved(true); setOppOpen(false); setOppForm({ title: "", description: "", type: "oferta", contact: "" }); }
+                  if (res.ok) { setOppSaved(true); setOppOpen(false); setOppForm({ title: "", description: "", type: "oferta", contact: "", expires_at: "" }); }
                 }} disabled={oppSaving}
                   className="text-xs bg-hangar-orange text-white px-4 py-1.5 rounded-lg font-medium disabled:opacity-50">
                   {oppSaving ? "Salvando..." : "Publicar no mural"}
