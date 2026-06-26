@@ -57,43 +57,72 @@ export default function MapReport({ members }: { members: MapMember[] }) {
         attribution: "© OpenStreetMap contributors",
       }).addTo(map);
 
-      // Agrupa por CEP
+      // Agrupa por CEP; membros sem CEP ficam em grupo "cidade"
       const cepMap = new Map<string, MapMember[]>();
+      const semCepMap = new Map<string, MapMember[]>(); // chave = cidade
       for (const m of members) {
         const cep = m.address?.cep?.replace(/\D/g, "");
-        if (!cep) continue;
-        if (!cepMap.has(cep)) cepMap.set(cep, []);
-        cepMap.get(cep)!.push(m);
+        if (cep) {
+          if (!cepMap.has(cep)) cepMap.set(cep, []);
+          cepMap.get(cep)!.push(m);
+        } else {
+          const cidade = m.address?.city ?? "Desconhecida";
+          if (!semCepMap.has(cidade)) semCepMap.set(cidade, []);
+          semCepMap.get(cidade)!.push(m);
+        }
       }
 
       const points: GeoPoint[] = [];
       const ceps = [...cepMap.keys()];
-      setStatus(`Geocodificando ${ceps.length} CEP(s)...`);
+      const totalGeo = ceps.length + semCepMap.size;
+      setStatus(`Geocodificando ${totalGeo} localização(ões)...`);
 
       for (const cep of ceps) {
         const geo = await geocodeCep(cep);
-        if (geo) {
-          points.push({ cep, ...geo, members: cepMap.get(cep)! });
-        }
-        await new Promise((r) => setTimeout(r, 300)); // respeita limite Nominatim
+        if (geo) points.push({ cep, ...geo, members: cepMap.get(cep)! });
+        await new Promise((r) => setTimeout(r, 300));
+      }
+
+      // Fallback: geocodifica por cidade para quem não tem CEP
+      for (const [cidade, mbs] of semCepMap.entries()) {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(cidade)}&country=BR&format=json&limit=1`,
+            { headers: { "Accept-Language": "pt-BR" } }
+          );
+          const data = await res.json();
+          if (data?.[0]) {
+            // Espalha ligeiramente para não sobrepor marcadores exatos da cidade
+            const lat = parseFloat(data[0].lat) + (Math.random() - 0.5) * 0.003;
+            const lng = parseFloat(data[0].lon) + (Math.random() - 0.5) * 0.003;
+            points.push({ cep: `cidade:${cidade}`, lat, lng, members: mbs });
+          }
+        } catch { /* ignore */ }
+        await new Promise((r) => setTimeout(r, 300));
       }
 
       for (const pt of points) {
         const count = pt.members.length;
+        const isCidade = pt.cep.startsWith("cidade:");
+        const bg = isCidade ? "#6366f1" : "#E8503A"; // roxo para fallback cidade
+        const size = count > 1 ? 32 : 24;
         const icon = L.divIcon({
           className: "",
-          html: `<div style="background:#E8503A;color:#fff;font-weight:900;font-size:13px;width:${count > 1 ? 32 : 24}px;height:${count > 1 ? 32 : 24}px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #111;box-shadow:0 2px 6px rgba(0,0,0,.4)">${count}</div>`,
-          iconSize: [count > 1 ? 32 : 24, count > 1 ? 32 : 24],
-          iconAnchor: [count > 1 ? 16 : 12, count > 1 ? 16 : 12],
+          html: `<div style="background:${bg};color:#fff;font-weight:900;font-size:13px;width:${size}px;height:${size}px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #111;box-shadow:0 2px 6px rgba(0,0,0,.4)">${count}</div>`,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size / 2],
         });
 
+        const label = isCidade
+          ? `Cidade: ${pt.cep.replace("cidade:", "")} (sem CEP)`
+          : `CEP ${pt.cep}`;
         const popup = pt.members
           .map((m) => `<div style="font-size:12px;margin-bottom:4px"><b>${m.name}</b><br/>${m.organization}</div>`)
           .join("");
 
         L.marker([pt.lat, pt.lng], { icon })
           .addTo(map)
-          .bindPopup(`<div style="min-width:160px"><b>CEP ${pt.cep}</b><br/>${popup}</div>`);
+          .bindPopup(`<div style="min-width:160px"><b>${label}</b><br/>${popup}</div>`);
       }
 
       if (points.length > 0) {
@@ -101,7 +130,7 @@ export default function MapReport({ members }: { members: MapMember[] }) {
         map.fitBounds(bounds, { padding: [40, 40] });
       }
 
-      const sem = members.filter((m) => !m.address?.cep).length;
+      const sem = members.filter((m) => !m.address?.cep && !m.address?.city).length;
       setStatus(sem > 0 ? `${sem} membro(s) sem CEP cadastrado não aparecem no mapa.` : "");
     })();
   }, [members]);

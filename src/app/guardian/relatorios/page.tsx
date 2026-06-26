@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, FileText, Map as MapIcon, BarChart2, Users, Printer, LogOut } from "lucide-react";
+import { ArrowLeft, FileText, Map as MapIcon, BarChart2, Users, Printer, LogOut, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   LEVEL_NAMES, CATEGORY_LABELS, HANGAR_LOGO_SVG,
@@ -210,6 +210,28 @@ function printPorNivel(members: Member[]) {
   printWindow("Participantes por Nível e Papel Especial", body);
 }
 
+// ─── CSV ──────────────────────────────────────────────────────────────────────
+function exportCSV(members: Member[]) {
+  const header = ["Nome","Email","WhatsApp","Organização","CNPJ","Categoria","Nível","Pontos","Status","Papel Especial","CEP","Logradouro","Número","Bairro","Cidade","Estado","CNAEs","Interesses","Quem sou","O que ofereço","O que busco","Conexão dos sonhos"];
+  const rows = members.map((m) => [
+    m.name, m.email, m.whatsapp, m.organization, m.cnpj ?? "",
+    CATEGORY_LABELS[m.category as MemberCategory] ?? m.category,
+    LEVEL_NAMES[m.level] ?? String(m.level), String(m.points), m.status,
+    m.role_special ? ROLE_LABELS[m.role_special] : "",
+    m.address?.cep ?? "", m.address?.street ?? "", m.address?.number ?? "",
+    m.address?.neighborhood ?? "", m.address?.city ?? "", m.address?.state ?? "",
+    (m.cnaes ?? []).map((c) => `${c.code} ${c.description}`).join("; "),
+    (m.interests ?? []).join("; "),
+    m.boarding_who ?? "", m.boarding_offers ?? "", m.boarding_seeks ?? "", m.boarding_dream ?? "",
+  ]);
+  const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `hangarsjp-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function RelatoriosPage() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -230,6 +252,14 @@ export default function RelatoriosPage() {
   }, []);
 
   const cards = [
+    {
+      icon: Download,
+      title: "Exportar CSV",
+      desc: "Exporta todos os dados dos participantes em planilha CSV completa, com todos os campos cadastrais e Cartão de Bordo.",
+      action: () => exportCSV(members),
+      color: "text-gray-600",
+      label: "Baixar CSV",
+    },
     {
       icon: FileText,
       title: "Relatório Completo",
@@ -295,7 +325,7 @@ export default function RelatoriosPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-              {cards.map(({ icon: Icon, title, desc, action, color }) => (
+              {cards.map(({ icon: Icon, title, desc, action, color, label }) => (
                 <div key={title} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <Icon size={20} className={color} />
@@ -306,8 +336,8 @@ export default function RelatoriosPage() {
                     onClick={action}
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-hangar-blue px-4 py-2 rounded-md hover:bg-hangar-blue/90 transition w-fit"
                   >
-                    <Printer size={14} />
-                    {title === "Mapa de CEPs" ? "Ver mapa" : "Gerar relatório"}
+                    {label === "Baixar CSV" ? <Download size={14} /> : <Printer size={14} />}
+                    {label ?? (title === "Mapa de CEPs" ? "Ver mapa" : "Gerar relatório")}
                   </button>
                 </div>
               ))}

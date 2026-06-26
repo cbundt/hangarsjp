@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { HangarLogo } from "@/components/ui/HangarLogo";
 import { LEVEL_NAMES, CATEGORY_LABELS, type MemberCategory } from "@/types";
 import Link from "next/link";
-import { Users, TrendingUp, Award, UserPlus, MessageSquare, ArrowLeft, CheckCheck, Download, Printer, LogOut, BarChart2 } from "lucide-react";
+import { Users, TrendingUp, Award, UserPlus, MessageSquare, ArrowLeft, CheckCheck, LogOut, BarChart2 } from "lucide-react";
 import { HANGAR_LOGO_SVG } from "@/types";
 import { useRouter } from "next/navigation";
 
@@ -143,14 +143,6 @@ export default function MembrosPage() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => exportCSV(members)}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-600 border border-gray-300 px-3 py-2 rounded-md hover:bg-gray-50 transition">
-              <Download size={15} /> CSV
-            </button>
-            <button onClick={() => printReport(members)}
-              className="inline-flex items-center gap-1.5 text-sm text-gray-600 border border-gray-300 px-3 py-2 rounded-md hover:bg-gray-50 transition">
-              <Printer size={15} /> Relatório
-            </button>
             <Link href="/guardian/relatorios"
               className="inline-flex items-center gap-1.5 text-sm text-gray-600 border border-gray-300 px-3 py-2 rounded-md hover:bg-gray-50 transition">
               <BarChart2 size={15} /> Relatórios
