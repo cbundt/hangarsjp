@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { HangarLogo } from "@/components/ui/HangarLogo";
 import { LEVEL_NAMES, CATEGORY_LABELS, type MemberCategory } from "@/types";
 import Link from "next/link";
-import { Users, TrendingUp, Award, UserPlus, MessageSquare, ArrowLeft, CheckCheck, LogOut, BarChart2, Calendar, Plus, Trash2, Pencil, X } from "lucide-react";
+import { Users, TrendingUp, Award, UserPlus, MessageSquare, ArrowLeft, CheckCheck, LogOut, BarChart2, Calendar, Plus, Trash2, Pencil, X, Send, Mail } from "lucide-react";
 import { HANGAR_LOGO_SVG } from "@/types";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +22,23 @@ interface Message {
 interface Event {
   id: string; title: string; date: string; info: string | null; link: string | null;
 }
+
+interface Broadcast {
+  id: string; subject: string; body: string; filters: Record<string, unknown>;
+  recipient_count: number; sent_at: string;
+}
+
+const LEVEL_FILTER_OPTIONS = [0,1,2,3,4].map((l) => ({ value: l, label: LEVEL_NAMES[l] }));
+const ROLE_FILTER_OPTIONS = [
+  { value: "torre_controle", label: "Torre de Controle" },
+  { value: "mecanico_solo", label: "Mecânico de Solo" },
+  { value: "controlador_rota", label: "Controlador de Rota" },
+];
+const STATUS_FILTER_OPTIONS = [
+  { value: "ativo", label: "Ativo" },
+  { value: "irregular", label: "Irregular" },
+  { value: "licenciado", label: "Licenciado" },
+];
 
 const EMPTY_FORM = { title: "", date: "", info: "", link: "" };
 
@@ -105,12 +122,19 @@ export default function MembrosPage() {
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [tab, setTab] = useState<"membros" | "mensagens" | "eventos">("membros");
+  const [tab, setTab] = useState<"membros" | "mensagens" | "eventos" | "disparos">("membros");
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [eventForm, setEventForm] = useState(EMPTY_FORM);
   const [editingEvent, setEditingEvent] = useState<string | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
+  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [bSubject, setBSubject] = useState("");
+  const [bBody, setBBody] = useState("");
+  const [bLevels, setBLevels] = useState<number[]>([]);
+  const [bRoles, setBRoles] = useState<string[]>([]);
+  const [bStatuses, setBStatuses] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
   const router = useRouter();
 
   const logout = async () => {
@@ -123,12 +147,14 @@ export default function MembrosPage() {
       fetch("/api/members").then((r) => r.json()),
       fetch("/api/messages").then((r) => r.json()),
       fetch("/api/events").then((r) => r.json()),
-    ]).then(([m, msg, evs]) => {
+      fetch("/api/broadcasts").then((r) => r.json()),
+    ]).then(([m, msg, evs, bcs]) => {
       setMembers(Array.isArray(m) ? m : []);
       const msgs = Array.isArray(msg) ? msg : [];
       setMessages(msgs);
       setUnreadCount(msgs.filter((x: Message) => !x.read_at).length);
       setEvents(Array.isArray(evs) ? evs : []);
+      setBroadcasts(Array.isArray(bcs) ? bcs : []);
       setLoading(false);
     });
   }, []);
@@ -159,6 +185,34 @@ export default function MembrosPage() {
     await fetch(`/api/events/${id}`, { method: "DELETE" });
     setEvents((prev) => prev.filter((e) => e.id !== id));
   };
+
+  const sendBroadcast = async () => {
+    if (!bSubject || !bBody) return;
+    setSending(true);
+    const filters = {
+      ...(bLevels.length ? { levels: bLevels } : {}),
+      ...(bRoles.length ? { roles: bRoles } : {}),
+      ...(bStatuses.length ? { statuses: bStatuses } : {}),
+    };
+    const res = await fetch("/api/broadcasts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject: bSubject, body: bBody, filters }),
+    });
+    const data = await res.json();
+    setSending(false);
+    if (res.ok) {
+      alert(`Mensagem enviada para ${data.sent} destinatário(s).`);
+      setBSubject(""); setBBody(""); setBLevels([]); setBRoles([]); setBStatuses([]);
+      const updated = await fetch("/api/broadcasts").then((r) => r.json());
+      setBroadcasts(Array.isArray(updated) ? updated : []);
+    } else {
+      alert(data.error ?? "Erro ao enviar.");
+    }
+  };
+
+  const toggleFilter = <T,>(arr: T[], val: T, set: (a: T[]) => void) =>
+    set(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
 
   const startEdit = (ev: Event) => {
     setEditingEvent(ev.id);
@@ -252,6 +306,13 @@ export default function MembrosPage() {
           >
             <Calendar size={15} />
             Eventos ({events.length})
+          </button>
+          <button
+            onClick={() => setTab("disparos")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 ${tab === "disparos" ? "bg-white shadow-sm text-hangar-blue" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            <Mail size={15} />
+            Disparos
           </button>
         </div>
 
@@ -410,6 +471,99 @@ export default function MembrosPage() {
                 ))}
               </div>
             )}
+          </div>
+        ) : tab === "disparos" ? (
+          <div className="space-y-4">
+            {/* Formulário de disparo */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Send size={16} className="text-hangar-blue" /> Nova mensagem
+              </h2>
+
+              {/* Filtros */}
+              <div className="mb-4 space-y-3">
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Filtrar destinatários <span className="text-gray-400 font-normal">(vazio = todos ativos)</span></p>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1.5">Nível</p>
+                  <div className="flex flex-wrap gap-2">
+                    {LEVEL_FILTER_OPTIONS.map((o) => (
+                      <button key={o.value} onClick={() => toggleFilter(bLevels, o.value, setBLevels)}
+                        className={`text-xs px-3 py-1 rounded-full border transition ${bLevels.includes(o.value) ? "bg-hangar-blue text-white border-hangar-blue" : "border-gray-200 text-gray-600 hover:border-hangar-blue"}`}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1.5">Papel especial</p>
+                  <div className="flex flex-wrap gap-2">
+                    {ROLE_FILTER_OPTIONS.map((o) => (
+                      <button key={o.value} onClick={() => toggleFilter(bRoles, o.value, setBRoles)}
+                        className={`text-xs px-3 py-1 rounded-full border transition ${bRoles.includes(o.value) ? "bg-hangar-blue text-white border-hangar-blue" : "border-gray-200 text-gray-600 hover:border-hangar-blue"}`}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-1.5">Status</p>
+                  <div className="flex flex-wrap gap-2">
+                    {STATUS_FILTER_OPTIONS.map((o) => (
+                      <button key={o.value} onClick={() => toggleFilter(bStatuses, o.value, setBStatuses)}
+                        className={`text-xs px-3 py-1 rounded-full border transition ${bStatuses.includes(o.value) ? "bg-hangar-blue text-white border-hangar-blue" : "border-gray-200 text-gray-600 hover:border-hangar-blue"}`}>
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Mensagem */}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Assunto *</label>
+                  <input value={bSubject} onChange={(e) => setBSubject(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-blue/30"
+                    placeholder="Ex: Reunião ordinária — julho/2026" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Mensagem *</label>
+                  <textarea value={bBody} onChange={(e) => setBBody(e.target.value)} rows={5}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-blue/30 resize-none"
+                    placeholder="Olá, membros do HangarSJP!&#10;&#10;..." />
+                </div>
+              </div>
+              <button onClick={sendBroadcast} disabled={sending || !bSubject || !bBody}
+                className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-white bg-hangar-orange px-5 py-2 rounded-lg hover:bg-hangar-orange/90 transition disabled:opacity-40">
+                <Send size={14} /> {sending ? "Enviando..." : "Enviar mensagem"}
+              </button>
+            </div>
+
+            {/* Histórico */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <Mail size={16} className="text-gray-500" /> Histórico de disparos
+              </h2>
+              {broadcasts.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">Nenhum disparo realizado ainda.</p>
+              ) : (
+                <div className="space-y-2">
+                  {broadcasts.map((b) => (
+                    <div key={b.id} className="border border-gray-100 rounded-lg p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm">{b.subject}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {new Date(b.sent_at).toLocaleString("pt-BR")} · {b.recipient_count} destinatário(s)
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2 line-clamp-2">{b.body}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </div>

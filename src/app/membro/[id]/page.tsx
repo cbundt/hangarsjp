@@ -16,7 +16,7 @@ import {
 } from "@/types";
 import { searchCnae, type CnaeOption } from "@/lib/cnae";
 import { fetchAddressByCep } from "@/lib/viacep";
-import { CheckCircle, Edit3, X, Send, MessageSquare } from "lucide-react";
+import { CheckCircle, Edit3, X, Send, MessageSquare, Link2, Clock, Handshake, Plus } from "lucide-react";
 import { HangarLogo } from "@/components/ui/HangarLogo";
 
 const EditSchema = z.object({
@@ -53,6 +53,11 @@ export default function MembroPage() {
   const [msgText, setMsgText] = useState("");
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [oppOpen, setOppOpen] = useState(false);
+  const [oppForm, setOppForm] = useState({ title: "", description: "", type: "oferta", contact: "" });
+  const [oppSaving, setOppSaving] = useState(false);
+  const [oppSaved, setOppSaved] = useState(false);
 
   // CNAE state for editing
   const [editCnaes, setEditCnaes] = useState<CnaeItem[]>([]);
@@ -602,20 +607,132 @@ export default function MembroPage() {
           </div>
         </div>
 
-        {/* Histórico de concluídas */}
+        {/* Histórico de concluídas — timeline */}
         {doneTasks.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-            <h2 className="font-semibold text-gray-800 mb-4">Atividades concluídas</h2>
-            <div className="space-y-2">
-              {doneTasks.map((t) => (
-                <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200 text-sm">
-                  <span className="text-gray-700">{t.title}</span>
-                  <span className="font-mono font-semibold text-green-600">{t.points} pts</span>
-                </div>
-              ))}
+            <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <Clock size={16} className="text-gray-400" /> Histórico de atividades
+            </h2>
+            <div className="relative">
+              <div className="absolute left-4 top-2 bottom-2 w-px bg-gray-100" />
+              <div className="space-y-4 ml-10">
+                {doneTasks.map((t) => (
+                  <div key={t.id} className="relative">
+                    <div className="absolute -left-[2.75rem] top-1.5 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-white shadow" />
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm text-gray-700 font-medium">{t.title}</p>
+                        {t.completed_at && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {new Date(t.completed_at).toLocaleDateString("pt-BR")}
+                          </p>
+                        )}
+                      </div>
+                      <span className="font-mono text-sm font-semibold text-green-600 shrink-0">+{t.points} pts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
+
+        {/* Mural de Oportunidades */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+              <Handshake size={16} className="text-hangar-orange" /> Mural de Oportunidades
+            </h2>
+            <button onClick={() => setOppOpen(!oppOpen)}
+              className="text-xs text-hangar-orange border border-hangar-orange/30 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-hangar-orange/5 transition">
+              <Plus size={13} /> Publicar
+            </button>
+          </div>
+
+          {oppOpen && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Tipo</label>
+                <div className="flex gap-2">
+                  {(["oferta","demanda","parceria"] as const).map((t) => (
+                    <button key={t} onClick={() => setOppForm({ ...oppForm, type: t })}
+                      className={`text-xs px-3 py-1 rounded-full border transition capitalize ${oppForm.type === t ? "bg-hangar-orange text-white border-hangar-orange" : "border-gray-300 text-gray-600"}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Título *</label>
+                <input value={oppForm.title} onChange={(e) => setOppForm({ ...oppForm, title: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-orange/30"
+                  placeholder="Ex: Consultoria em marketing digital" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Descrição *</label>
+                <textarea value={oppForm.description} onChange={(e) => setOppForm({ ...oppForm, description: e.target.value })}
+                  rows={3} className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-orange/30 resize-none"
+                  placeholder="Descreva detalhes..." />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 block mb-1">Contato (opcional)</label>
+                <input value={oppForm.contact} onChange={(e) => setOppForm({ ...oppForm, contact: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-hangar-orange/30"
+                  placeholder="WhatsApp, e-mail, etc." />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={async () => {
+                  if (!oppForm.title || !oppForm.description) return;
+                  setOppSaving(true);
+                  const res = await fetch("/api/opportunities", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ...oppForm, member_id: id }),
+                  });
+                  setOppSaving(false);
+                  if (res.ok) { setOppSaved(true); setOppOpen(false); setOppForm({ title: "", description: "", type: "oferta", contact: "" }); }
+                }} disabled={oppSaving}
+                  className="text-xs bg-hangar-orange text-white px-4 py-1.5 rounded-lg font-medium disabled:opacity-50">
+                  {oppSaving ? "Salvando..." : "Publicar no mural"}
+                </button>
+                <button onClick={() => setOppOpen(false)} className="text-xs text-gray-400 px-3 py-1.5">Cancelar</button>
+              </div>
+              {oppSaved && (
+                <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle size={13} /> Publicado com sucesso!</p>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400">
+            Veja todas as oportunidades no{" "}
+            <a href="/mural" target="_blank" className="text-hangar-orange underline">Mural público →</a>
+          </p>
+        </div>
+
+        {/* Link de indicação */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <h2 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
+            <Link2 size={16} className="text-hangar-blue" /> Meu link de indicação
+          </h2>
+          <p className="text-xs text-gray-500 mb-3">Compartilhe este link. Quando alguém se inscrever pelo seu link, a indicação fica registrada.</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-600 truncate">
+              {typeof window !== "undefined" ? `${window.location.origin}/cadastro?ref=${id}` : `/cadastro?ref=${id}`}
+            </code>
+            <button onClick={() => {
+              const url = `${window.location.origin}/cadastro?ref=${id}`;
+              navigator.clipboard.writeText(url);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+            }} className="text-xs text-hangar-blue border border-hangar-blue/30 px-3 py-2 rounded-lg hover:bg-hangar-blue/5 transition shrink-0">
+              {linkCopied ? "Copiado!" : "Copiar"}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Perfil público:{" "}
+            <a href={`/p/${id}`} target="_blank" className="text-hangar-blue underline">ver meu perfil →</a>
+          </p>
+        </div>
       </div>
     </div>
   );
