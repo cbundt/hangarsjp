@@ -28,6 +28,10 @@ interface Broadcast {
   recipient_count: number; sent_at: string;
 }
 
+interface BroadcastRecipient {
+  id: string; name: string; email: string; member_id: string | null;
+}
+
 const LEVEL_FILTER_OPTIONS = [0,1,2,3,4].map((l) => ({ value: l, label: LEVEL_NAMES[l] }));
 const ROLE_FILTER_OPTIONS = [
   { value: "torre_controle", label: "Torre de Controle" },
@@ -129,6 +133,8 @@ export default function MembrosPage() {
   const [editingEvent, setEditingEvent] = useState<string | null>(null);
   const [savingEvent, setSavingEvent] = useState(false);
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
+  const [expandedBroadcast, setExpandedBroadcast] = useState<string | null>(null);
+  const [broadcastRecipients, setBroadcastRecipients] = useState<Record<string, BroadcastRecipient[]>>({});
   const [bSubject, setBSubject] = useState("");
   const [bBody, setBBody] = useState("");
   const [bLevels, setBLevels] = useState<number[]>([]);
@@ -548,19 +554,56 @@ export default function MembrosPage() {
                 <p className="text-sm text-gray-400 text-center py-8">Nenhum disparo realizado ainda.</p>
               ) : (
                 <div className="space-y-2">
-                  {broadcasts.map((b) => (
-                    <div key={b.id} className="border border-gray-100 rounded-lg p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-medium text-gray-800 text-sm">{b.subject}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {new Date(b.sent_at).toLocaleString("pt-BR")} · {b.recipient_count} destinatário(s)
-                          </p>
-                        </div>
+                  {broadcasts.map((b) => {
+                    const isOpen = expandedBroadcast === b.id;
+                    const recipients = broadcastRecipients[b.id];
+                    return (
+                      <div key={b.id} className="border border-gray-100 rounded-lg overflow-hidden">
+                        <button
+                          className="w-full text-left p-3 hover:bg-gray-50 transition"
+                          onClick={async () => {
+                            if (isOpen) { setExpandedBroadcast(null); return; }
+                            setExpandedBroadcast(b.id);
+                            if (!broadcastRecipients[b.id]) {
+                              const r = await fetch(`/api/broadcasts/${b.id}`).then((x) => x.json());
+                              setBroadcastRecipients((prev) => ({ ...prev, [b.id]: Array.isArray(r) ? r : [] }));
+                            }
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-800 text-sm">{b.subject}</p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {new Date(b.sent_at).toLocaleString("pt-BR")} ·{" "}
+                                <span className="text-hangar-blue font-medium">{b.recipient_count} destinatário(s)</span>
+                              </p>
+                            </div>
+                            <span className="text-gray-400 text-xs shrink-0 mt-0.5">{isOpen ? "▲" : "▼"}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1.5 line-clamp-2 text-left">{b.body}</p>
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-gray-100 bg-gray-50 px-3 py-3">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Destinatários</p>
+                            {!recipients ? (
+                              <p className="text-xs text-gray-400">Carregando...</p>
+                            ) : recipients.length === 0 ? (
+                              <p className="text-xs text-gray-400">Nenhum destinatário registrado.</p>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                {recipients.map((r) => (
+                                  <div key={r.id} className="text-xs text-gray-600">
+                                    <span className="font-medium text-gray-700">{r.name}</span>
+                                    <span className="text-gray-400"> · {r.email}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 line-clamp-2">{b.body}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

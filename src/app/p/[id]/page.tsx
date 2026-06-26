@@ -11,7 +11,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
   const [{ data: member }, { data: boarding }] = await Promise.all([
     supabase.from("member")
-      .select("id,name,organization,category,level,points,linkedin,instagram,interests,cnaes,consent_public_profile,status")
+      .select("id,name,organization,category,level,points,linkedin,instagram,interests,cnaes,status")
       .eq("id", id).single(),
     supabase.from("boarding")
       .select("who,offers,seeks,dream_connection")
