@@ -84,7 +84,7 @@ export default function HomePage() {
 
       {/* Grid de duas colunas */}
       {(events.length > 0 || activeOpps.length > 0) && (
-        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
 
           {/* Coluna esquerda — Calendário */}
           {events.length > 0 && (
