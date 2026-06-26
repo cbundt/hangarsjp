@@ -96,7 +96,7 @@ export default function HomePage() {
 
             {past.length > 0 && (
               <>
-                <p className="text-xs text-gray-600 uppercase tracking-widest mt-2 mb-1">Realizados</p>
+                <p className="text-xs text-gray-600 uppercase tracking-widest mt-2 mb-1">Datas/Eventos já transcorridos</p>
                 {past.map((ev) => (
                   <div key={ev.id} className="rounded-xl border border-gray-800 bg-[#161616] p-4 opacity-60">
                     <div className="flex items-start justify-between gap-3">
