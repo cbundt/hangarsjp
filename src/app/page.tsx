@@ -66,7 +66,7 @@ export default function HomePage() {
         <div className="w-full max-w-lg">
           <div className="flex items-center gap-2 mb-4">
             <Calendar size={18} className="text-[#E8503A]" />
-            <h3 className="text-white text-sm font-semibold tracking-widest uppercase">Agenda</h3>
+            <h3 className="text-white text-sm font-semibold tracking-widest uppercase">Datas em Destaque para o Ecossistema e seus Membros</h3>
           </div>
 
           <div className="flex flex-col gap-3">
