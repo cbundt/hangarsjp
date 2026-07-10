@@ -79,6 +79,7 @@ function printCompleto(members: Member[]) {
       <td style="font-size:7.5pt">${m.boarding_offers ?? "—"}</td>
       <td style="font-size:7.5pt">${m.boarding_seeks ?? "—"}</td>
       <td style="font-size:7.5pt">${m.boarding_dream ?? "—"}</td>
+      <td style="font-size:7.5pt">${new Date(m.created_at).toLocaleDateString("pt-BR")}</td>
     </tr>`;
   }).join("");
 
@@ -87,7 +88,7 @@ function printCompleto(members: Member[]) {
       <th>Participante</th><th>Organização</th><th>Categoria</th>
       <th>Nível/Pts</th><th>Status</th><th>Papel</th>
       <th>Endereço</th><th>CNAEs</th><th>Interesses</th>
-      <th>Quem sou</th><th>O que ofereço</th><th>O que busco</th><th>Conexão dos sonhos</th>
+      <th>Quem sou</th><th>O que ofereço</th><th>O que busco</th><th>Conexão dos sonhos</th><th>Data de cadastro</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
@@ -212,7 +213,7 @@ function printPorNivel(members: Member[]) {
 
 // ─── CSV ──────────────────────────────────────────────────────────────────────
 function exportCSV(members: Member[]) {
-  const header = ["Nome","Email","WhatsApp","Organização","CNPJ","Categoria","Nível","Pontos","Status","Papel Especial","CEP","Logradouro","Número","Bairro","Cidade","Estado","CNAEs","Interesses","Quem sou","O que ofereço","O que busco","Conexão dos sonhos"];
+  const header = ["Nome","Email","WhatsApp","Organização","CNPJ","Categoria","Nível","Pontos","Status","Papel Especial","CEP","Logradouro","Número","Bairro","Cidade","Estado","CNAEs","Interesses","Quem sou","O que ofereço","O que busco","Conexão dos sonhos","Data de cadastro"];
   const rows = members.map((m) => [
     m.name, m.email, m.whatsapp, m.organization, m.cnpj ?? "",
     CATEGORY_LABELS[m.category as MemberCategory] ?? m.category,
@@ -223,6 +224,7 @@ function exportCSV(members: Member[]) {
     (m.cnaes ?? []).map((c) => `${c.code} ${c.description}`).join("; "),
     (m.interests ?? []).join("; "),
     m.boarding_who ?? "", m.boarding_offers ?? "", m.boarding_seeks ?? "", m.boarding_dream ?? "",
+    new Date(m.created_at).toLocaleDateString("pt-BR"),
   ]);
   const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });

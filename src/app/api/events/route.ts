@@ -13,7 +13,7 @@ export async function GET() {
   const supabase = await createServiceClient();
   const today = new Date();
   const from = new Date(today); from.setDate(today.getDate() - 30);
-  const to = new Date(today); to.setDate(today.getDate() + 30);
+  const to = new Date(today); to.setDate(today.getDate() + 60);
 
   const { data, error } = await supabase
     .from("event")
