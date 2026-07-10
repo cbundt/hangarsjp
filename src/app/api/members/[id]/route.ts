@@ -33,6 +33,7 @@ const UpdateSchema = z.object({
   role_special: z.enum(["torre_controle","mecanico_solo","controlador_rota"]).nullable().optional(),
   status: z.enum(["ativo","irregular","licenciado","excluido"]).optional(),
   onboarding_date: z.string().optional(),
+  created_at: z.string().datetime({ offset: true }).optional(),
   // Cartão de Bordo (tabela boarding)
   boarding_who: z.string().min(5).optional().or(z.literal("")),
   boarding_offers: z.string().min(5).optional().or(z.literal("")),

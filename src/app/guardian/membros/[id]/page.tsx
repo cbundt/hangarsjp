@@ -653,6 +653,42 @@ export default function MemberDetailPage() {
           </div>
         )}
 
+        {/* ── Data de entrada ── */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+          <h2 className="font-semibold text-gray-800 mb-1 flex items-center gap-2">
+            <Edit3 size={16} className="text-gray-400" /> Data de entrada no ecossistema
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">Ajuste manualmente para membros que ingressaram antes do sistema digital.</p>
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-gray-600">Data</label>
+              <input
+                type="date"
+                defaultValue={member.created_at ? member.created_at.slice(0, 10) : ""}
+                id="created-at-input"
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm bg-white focus:border-hangar-blue outline-none"
+              />
+            </div>
+            <button
+              onClick={async () => {
+                const input = document.getElementById("created-at-input") as HTMLInputElement;
+                const val = input?.value;
+                if (!val) return;
+                await fetch(`/api/members/${id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ created_at: new Date(val + "T12:00:00").toISOString() }),
+                });
+                setMember((m) => m ? { ...m, created_at: new Date(val + "T12:00:00").toISOString() } : m);
+                alert("Data de entrada atualizada.");
+              }}
+              className="text-sm font-medium bg-gray-800 text-white px-4 py-1.5 rounded-md hover:bg-gray-700 transition"
+            >
+              Salvar data
+            </button>
+          </div>
+        </div>
+
         {/* ── Alterar nível ── */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">

@@ -263,6 +263,34 @@ function printOportunidades(opportunities: Opportunity[]) {
   printWindow("Mural de Oportunidades", body);
 }
 
+function printMensal(members: Member[]) {
+  const byMonth = new Map<string, Member[]>();
+  for (const m of members) {
+    const d = new Date(m.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key)!.push(m);
+  }
+  const sorted = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const monthNames = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  let cumulative = 0;
+  const rows = sorted.map(([key, list]) => {
+    const [y, m] = key.split("-").map(Number);
+    cumulative += list.length;
+    return `<tr>
+      <td><b>${monthNames[m - 1]}/${y}</b></td>
+      <td style="text-align:center;font-weight:700;color:#E8503A">${list.length}</td>
+      <td style="text-align:center;color:#888">${cumulative}</td>
+      <td style="font-size:7.5pt">${list.map((x) => x.name).join(", ")}</td>
+    </tr>`;
+  }).join("");
+  const body = `<table>
+    <thead><tr><th>Mês</th><th style="text-align:center">Novas adesões</th><th style="text-align:center">Acumulado</th><th>Participantes</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  printWindow("Adesões por Mês", body);
+}
+
 function printTimeline(members: Member[]) {
   const sorted = [...members].sort((a, b) =>
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -290,6 +318,8 @@ export default function RelatoriosPage() {
   const [showMap, setShowMap] = useState(false);
   const [showOpportunities, setShowOpportunities] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  const [showMensal, setShowMensal] = useState(false);
+  const [showCnaeCloud, setShowCnaeCloud] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -376,6 +406,26 @@ export default function RelatoriosPage() {
       },
       color: "text-emerald-600",
     },
+    {
+      icon: BarChart2,
+      title: "Adesões por Mês",
+      desc: "Quantos membros ingressaram a cada mês, com total acumulado — útil para correlacionar com ações de divulgação.",
+      action: () => {
+        setShowMensal(true);
+        setTimeout(() => document.getElementById("mensal-panel")?.scrollIntoView({ behavior: "smooth" }), 100);
+      },
+      color: "text-cyan-600",
+    },
+    {
+      icon: Users,
+      title: "Nuvem de CNAEs",
+      desc: "Visualização em nuvem dos CNAEs cadastrados — os mais frequentes aparecem maiores.",
+      action: () => {
+        setShowCnaeCloud(true);
+        setTimeout(() => document.getElementById("cnae-cloud-panel")?.scrollIntoView({ behavior: "smooth" }), 100);
+      },
+      color: "text-violet-600",
+    },
   ];
 
   return (
@@ -420,6 +470,92 @@ export default function RelatoriosPage() {
                 </div>
               ))}
             </div>
+
+            {/* Adesões por mês */}
+            {showMensal && (() => {
+              const byMonth = new Map<string, Member[]>();
+              for (const m of members) {
+                const d = new Date(m.created_at);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                if (!byMonth.has(key)) byMonth.set(key, []);
+                byMonth.get(key)!.push(m);
+              }
+              const sorted = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+              const monthNames = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+              const max = Math.max(...sorted.map(([, l]) => l.length), 1);
+              let cumulative = 0;
+              return (
+                <div id="mensal-panel" className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                      <BarChart2 size={18} className="text-cyan-600" /> Adesões por Mês
+                    </h2>
+                    <button onClick={() => printMensal(members)}
+                      className="inline-flex items-center gap-1 text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50">
+                      <Printer size={13} /> Imprimir
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {sorted.map(([key, list]) => {
+                      const [y, mo] = key.split("-").map(Number);
+                      cumulative += list.length;
+                      const pct = Math.round((list.length / max) * 100);
+                      return (
+                        <div key={key} className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500 w-16 shrink-0 font-medium">{monthNames[mo - 1]}/{y}</span>
+                          <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+                            <div className="h-5 bg-cyan-500 rounded-full flex items-center pl-2 transition-all"
+                              style={{ width: `${Math.max(pct, 4)}%` }}>
+                              <span className="text-xs text-white font-bold">{list.length}</span>
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-400 w-16 shrink-0">acum. {cumulative}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Nuvem de CNAEs */}
+            {showCnaeCloud && (() => {
+              const freq = new Map<string, number>();
+              for (const m of members) {
+                for (const c of m.cnaes ?? []) {
+                  freq.set(c.code, (freq.get(c.code) ?? 0) + 1);
+                }
+              }
+              const entries = [...freq.entries()].sort((a, b) => b[1] - a[1]);
+              const maxFreq = entries[0]?.[1] ?? 1;
+              return (
+                <div id="cnae-cloud-panel" className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+                  <h2 className="font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                    <Users size={18} className="text-violet-600" /> Nuvem de CNAEs
+                    <span className="text-xs font-normal text-gray-400 ml-1">({entries.length} códigos distintos)</span>
+                  </h2>
+                  {entries.length === 0 ? (
+                    <p className="text-sm text-gray-400">Nenhum CNAE cadastrado.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2 items-baseline leading-loose">
+                      {entries.map(([code, count]) => {
+                        const ratio = count / maxFreq;
+                        const size = ratio > 0.75 ? "text-3xl" : ratio > 0.5 ? "text-2xl" : ratio > 0.25 ? "text-lg" : "text-sm";
+                        const weight = ratio > 0.5 ? "font-black" : ratio > 0.25 ? "font-bold" : "font-medium";
+                        const opacity = ratio > 0.5 ? "opacity-100" : ratio > 0.25 ? "opacity-80" : "opacity-60";
+                        return (
+                          <span key={code} title={`${code} — ${count} membro(s)`}
+                            className={`${size} ${weight} ${opacity} text-violet-700 cursor-default select-none`}>
+                            {code}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 mt-4">Passe o mouse sobre o código para ver quantos membros o utilizam.</p>
+                </div>
+              );
+            })()}
 
             {/* Linha do tempo de adesões */}
             {showTimeline && (
