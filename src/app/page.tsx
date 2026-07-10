@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { HangarLogo } from "@/components/ui/HangarLogo";
-import { Calendar, ExternalLink, Handshake, Search, TrendingUp } from "lucide-react";
+import { Calendar, ExternalLink, Handshake, Search, TrendingUp, CalendarDays } from "lucide-react";
 
 interface Event {
   id: string;
@@ -78,6 +78,11 @@ export default function HomePage() {
             <Button size="lg" variant="secondary" className="border-gray-600 text-gray-300 bg-transparent hover:bg-gray-800 w-full sm:w-auto">
               Painel do Guardião
             </Button>
+          </Link>
+        </div>
+        <div className="mt-6">
+          <Link href="/calendario" className="inline-flex items-center gap-2 text-xs text-gray-500 hover:text-gray-300 transition border border-gray-700 hover:border-gray-500 px-4 py-2 rounded-full">
+            <CalendarDays size={14} /> Ver calendário de eventos
           </Link>
         </div>
       </div>

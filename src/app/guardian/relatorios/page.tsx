@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, FileText, Map as MapIcon, BarChart2, Users, Printer, LogOut, Download, Handshake } from "lucide-react";
+import { ArrowLeft, FileText, Map as MapIcon, BarChart2, Users, Printer, LogOut, Download, Handshake, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   LEVEL_NAMES, CATEGORY_LABELS, HANGAR_LOGO_SVG,
@@ -261,6 +261,25 @@ function printOportunidades(opportunities: Opportunity[]) {
   printWindow("Mural de Oportunidades", body);
 }
 
+function printTimeline(members: Member[]) {
+  const sorted = [...members].sort((a, b) =>
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  const rows = sorted.map((m, i) => `<tr>
+    <td style="text-align:center;color:#999">${i + 1}</td>
+    <td><b>${m.name}</b></td>
+    <td>${m.organization}</td>
+    <td>${new Date(m.created_at).toLocaleDateString("pt-BR")}</td>
+    <td>${new Date(m.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</td>
+    <td>${m.status}</td>
+  </tr>`).join("");
+  const body = `<table>
+    <thead><tr><th>#</th><th>Nome</th><th>Organização</th><th>Data</th><th>Hora</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  printWindow("Linha do Tempo de Adesões", body);
+}
+
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function RelatoriosPage() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -268,6 +287,7 @@ export default function RelatoriosPage() {
   const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
   const [showOpportunities, setShowOpportunities] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -344,6 +364,16 @@ export default function RelatoriosPage() {
       },
       color: "text-amber-600",
     },
+    {
+      icon: TrendingUp,
+      title: "Linha do Tempo de Adesões",
+      desc: "Histórico de cadastros em ordem cronológica — data e hora exatas de cada adesão ao ecossistema.",
+      action: () => {
+        setShowTimeline(true);
+        setTimeout(() => document.getElementById("timeline-panel")?.scrollIntoView({ behavior: "smooth" }), 100);
+      },
+      color: "text-emerald-600",
+    },
   ];
 
   return (
@@ -388,6 +418,59 @@ export default function RelatoriosPage() {
                 </div>
               ))}
             </div>
+
+            {/* Linha do tempo de adesões */}
+            {showTimeline && (
+              <div id="timeline-panel" className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                    <TrendingUp size={18} className="text-emerald-600" /> Linha do Tempo de Adesões
+                    <span className="text-xs font-normal text-gray-400 ml-1">({members.length} membros)</span>
+                  </h2>
+                  <button
+                    onClick={() => printTimeline(members)}
+                    className="inline-flex items-center gap-1 text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50"
+                  >
+                    <Printer size={13} /> Imprimir
+                  </button>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-3 top-2 bottom-2 w-px bg-gray-100" />
+                  <div className="space-y-1 ml-8">
+                    {[...members]
+                      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                      .map((m, i, arr) => {
+                        const date = new Date(m.created_at);
+                        const prev = i > 0 ? new Date(arr[i - 1].created_at) : null;
+                        const showMonth = !prev ||
+                          prev.getMonth() !== date.getMonth() ||
+                          prev.getFullYear() !== date.getFullYear();
+                        return (
+                          <div key={m.id}>
+                            {showMonth && (
+                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest pt-3 pb-1 ml-[-2rem] pl-8 border-t border-gray-50 first:border-0">
+                                {date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                              </p>
+                            )}
+                            <div className="relative flex items-start gap-3 py-1">
+                              <div className="absolute -left-5 top-2 w-2 h-2 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
+                              <div className="flex-1 flex items-baseline justify-between gap-2 min-w-0">
+                                <div className="min-w-0">
+                                  <span className="text-sm font-medium text-gray-800">{m.name}</span>
+                                  <span className="text-xs text-gray-400 ml-2 truncate">{m.organization}</span>
+                                </div>
+                                <span className="text-xs text-gray-400 shrink-0">
+                                  {date.toLocaleDateString("pt-BR")} {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Oportunidades inline */}
             {showOpportunities && (
